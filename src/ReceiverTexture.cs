@@ -1,28 +1,21 @@
-﻿//using NAudio.Wave;
-using NewTek;
+﻿using NewTek;
 using System;
-using System.Collections.Generic;
-using System.ComponentModel;
 using System.Runtime.InteropServices;
 using System.Threading;
-//using System.Windows;
-//using System.Windows.Controls;
-//using System.Windows.Media;
-//using System.Windows.Media.Imaging;
-using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Threading.Tasks;
+
+using VL.Core;
+using VL.Lib.Basics.Resources;
+
+using VVVV.Audio;
+using NAudio.Wave;
 
 using SharpDX;
 using SharpDX.Direct3D;
 using SharpDX.Direct3D11;
+using SharpDX.DXGI;
 
-using System.Drawing;
 
-using VL.Core;
-using VL.Lib.Basics.Imaging;
-using ImagingPixelFormat = VL.Lib.Basics.Imaging.PixelFormat;
-using VL.Lib.Basics.Resources;
 
 //namespace NewTek.NDI.VL
 namespace VL.IO.NDI
@@ -32,11 +25,22 @@ namespace VL.IO.NDI
     // Alternatively you can also remove any naudio related entries
     // and use it for video only, but don't forget that you will still need
     // to free any audio frames received.
-    public class ReceiverTexture : IDisposable, INotifyPropertyChanged
+    public class ReceiverTexture : IDisposable
     {
-        readonly IResourceProvider<Device> deviceProvider;
+        readonly IResourceProvider<SharpDX.Direct3D11.Device> deviceProvider;
+
+
+        private readonly Subject<Texture2D> videoFrames = new Subject<Texture2D>();
+
+        private Texture2D outputTexture;
+        private Texture2DDescription textureDesc;
 
         #region private properties
+        VVVV.Audio.BufferWiseResampler bufferwiseResampler = new BufferWiseResampler();
+
+        private AudioOut audioOutSignal = new AudioOut();
+
+
         // a pointer to our unmanaged NDI receiver instance
         private IntPtr _recvInstancePtr = IntPtr.Zero;
 
@@ -53,14 +57,17 @@ namespace VL.IO.NDI
         // should we send audio to Windows or not?
         private bool _audioEnabled = false;
 
-        ////// the NAudio related
-        ////private WasapiOut _wasapiOut = null;
-        //private MultiplexingWaveProvider _multiplexProvider = null;
-        //private BufferedWaveProvider _bufferedProvider = null;
+        // should we send video to Windows or not?
+        private bool _videoEnabled = true;
 
-        //// The last WaveFormat we used.
-        //// This may change over time, so remember how we are configured currently.
-        //private WaveFormat _waveFormat = null;
+        //// the NAudio related
+        //private WasapiOut _wasapiOut = null;
+        private MultiplexingWaveProvider _multiplexProvider = null;
+        private BufferedWaveProvider _bufferedProvider = null;
+
+        // The last WaveFormat we used.
+        // This may change over time, so remember how we are configured currently.
+        private WaveFormat _waveFormat = null;
 
         //// the current audio volume
         //private float _volume = 1.0f;
@@ -71,14 +78,6 @@ namespace VL.IO.NDI
         private String _receiverName = String.Empty;
 
         private Source _connectedSource;
-
-        private readonly Subject<Texture2D> videoFrames = new Subject<Texture2D>();
-
-        private Texture2D outputTexture;
-        private Texture2DDescription textureDesc;
-
-        private bool _videoEnabled = true;
-
         #endregion
 
         #region public properties
@@ -107,13 +106,7 @@ namespace VL.IO.NDI
         public bool IsAudioEnabled
         {
             get { return _audioEnabled; }
-            set
-            {
-                if (value != _audioEnabled)
-                {
-                    NotifyPropertyChanged("IsAudioEnabled");
-                }
-            }
+            set { _audioEnabled = value; }
         }
 
         /// <summary>
@@ -122,13 +115,7 @@ namespace VL.IO.NDI
         public bool IsVideoEnabled
         {
             get { return _videoEnabled; }
-            set
-            {
-                if (value != _videoEnabled)
-                {
-                    NotifyPropertyChanged("IsVideoEnabled");
-                }
-            }
+            set { _videoEnabled = value; }
         }
 
         //[Category("NewTek NDI"),
@@ -156,13 +143,7 @@ namespace VL.IO.NDI
         public bool IsPtz
         {
             get { return _isPtz; }
-            set
-            {
-                if (value != _isPtz)
-                {
-                    NotifyPropertyChanged("IsPtz");
-                }
-            }
+            set { _isPtz = value; }
         }
 
         /// <summary>
@@ -171,13 +152,7 @@ namespace VL.IO.NDI
         public bool IsRecordingSupported
         {
             get { return _canRecord; }
-            set
-            {
-                if (value != _canRecord)
-                {
-                    NotifyPropertyChanged("IsRecordingSupported");
-                }
-            }
+            set { _canRecord = value; }
         }
 
         /// <summary>
@@ -186,29 +161,24 @@ namespace VL.IO.NDI
         public String WebControlUrl
         {
             get { return _webControlUrl; }
-            set
-            {
-                if (value != _webControlUrl)
-                {
-                    NotifyPropertyChanged("WebControlUrl");
-                }
-            }
+            set { _webControlUrl = value; }
         }
-        /// <summary>
-        /// What and Why do we need This?
-        /// </summary>
-        public event PropertyChangedEventHandler PropertyChanged;
 
         /// <summary>
         /// Received Textures
         /// </summary>
         public IObservable<Texture2D> Frames => videoFrames;
-        #endregion        
-        
+
+        /// <summary>
+        /// 
+        /// </summary>
+        public AudioSignal AudioOutput => audioOutSignal;
+        #endregion
+
 
         public ReceiverTexture(NodeContext nodeContext)
         {
-            deviceProvider = nodeContext.Factory.CreateService<IResourceProvider<Device>>(nodeContext);
+            deviceProvider = nodeContext.Factory.CreateService<IResourceProvider<SharpDX.Direct3D11.Device>>(nodeContext);
 
         }
 
@@ -474,15 +444,19 @@ namespace VL.IO.NDI
 
         #endregion Recording Methods
 
-        private void NotifyPropertyChanged(String info)
-        {
-            if (PropertyChanged != null)
-            {
-                PropertyChanged(this, new PropertyChangedEventArgs(info));
-            }
-        }
 
         #region dispose and finalize
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        ~ReceiverTexture()
+        {
+            Dispose(false);
+        }
+
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
@@ -532,16 +506,6 @@ namespace VL.IO.NDI
             }
         }
 
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        ~ReceiverTexture()
-        {
-            Dispose(false);
-        }
 
         private bool _disposed = false;
         #endregion dispose and finalize
@@ -572,19 +536,12 @@ namespace VL.IO.NDI
             NDIlib.recv_bandwidth_e bandwidth = NDIlib.recv_bandwidth_e.recv_bandwidth_highest, 
             bool allowVideoFields = false)
         {
-            //if (System.ComponentModel.DesignerProperties.GetIsInDesignMode(this))
-            //    return;
 
             if (String.IsNullOrEmpty(ReceiverName))
                 throw new ArgumentException("sourceName can not be null or empty.", ReceiverName);
 
             // just in case we're already connected
             Disconnect();
-
-            //// before we are connected, we need to set up our image
-            //// it's bad practice to do this in the constructor
-            //if (Child == null)
-            //    Child = VideoSurface;
 
             // Sanity
             if (source == null || String.IsNullOrEmpty(source.Name))
@@ -699,8 +656,6 @@ namespace VL.IO.NDI
 
             while (!_exitThread && _recvInstancePtr != IntPtr.Zero)
             {
-                
-
                 // The descriptors
                 NDIlib.video_frame_v2_t videoFrame = new NDIlib.video_frame_v2_t();
                 NDIlib.audio_frame_v2_t audioFrame = new NDIlib.audio_frame_v2_t();
@@ -789,25 +744,8 @@ namespace VL.IO.NDI
                         buffer0 = buffer1;
                         buffer1 = temp;
 
-                        SharpDX.DXGI.Format texFmt;
-                        switch (videoFrame.FourCC)
-                        {
-                            case NDIlib.FourCC_type_e.FourCC_type_BGRA:
-                                texFmt = SharpDX.DXGI.Format.B8G8R8A8_UNorm;
-                                break;
-                            case NDIlib.FourCC_type_e.FourCC_type_BGRX:
-                                texFmt = SharpDX.DXGI.Format.B8G8R8A8_UNorm;
-                                break;
-                            case NDIlib.FourCC_type_e.FourCC_type_RGBA:
-                                texFmt = SharpDX.DXGI.Format.R8G8B8A8_UNorm;
-                                break;
-                            case NDIlib.FourCC_type_e.FourCC_type_RGBX:
-                                texFmt = SharpDX.DXGI.Format.B8G8R8A8_UNorm;
-                                break;
-                            default:
-                                texFmt = SharpDX.DXGI.Format.Unknown; // TODO: need to handle other video formats
-                                break;
-                        }
+
+                        SharpDX.DXGI.Format texFmt = videoFrame.FourCC.ToFormat();
 
                         if (newVideo) // it's the first time we enter the while loop, so cerate a new texture
                         {
@@ -819,13 +757,14 @@ namespace VL.IO.NDI
                                 ArraySize = 1,
                                 Format = texFmt,
                                 SampleDescription = new SharpDX.DXGI.SampleDescription(1, 0),
-                                Usage = ResourceUsage.Default,
+                                //Usage = ResourceUsage.Default,
+                                Usage = ResourceUsage.Immutable,
                                 BindFlags = BindFlags.ShaderResource,
                                 CpuAccessFlags = CpuAccessFlags.None,
                                 OptionFlags = ResourceOptionFlags.None
                             };
 
-                            outputTexture = new Texture2D(device, textureDesc);
+                            //outputTexture = new Texture2D(device, textureDesc);
 
                             newVideo = false;
                         }
@@ -833,13 +772,36 @@ namespace VL.IO.NDI
                         try
                         {
                             DataBox srcBox = new DataBox(buffer1);
-                            device.ImmediateContext.UpdateSubresource(srcBox, outputTexture, 0);
+
+                            //var data = device.ImmediateContext.MapSubresource(outputTexture, 0, SharpDX.Direct3D11.MapMode.Write, MapFlags.None);
+                            //device.ImmediateContext.UpdateSubresource(srcBox, outputTexture, 0);
+                            //var ttt = Texture2D.FromPointer<IntPtr>(buffer1);
+                            //var ttt = fromm
+
+                            outputTexture = new Texture2D(device, textureDesc, new DataRectangle(buffer1, stride));
+
+
+                            //outputTexture = new Texture2D(device, new SharpDX.Direct3D11.Texture2DDescription()
+                            //{
+                            //    Width = xres,
+                            //    Height = yres,
+                            //    ArraySize = 1,
+                            //    BindFlags = SharpDX.Direct3D11.BindFlags.ShaderResource,
+                            //    Usage = SharpDX.Direct3D11.ResourceUsage.Immutable,
+                            //    CpuAccessFlags = SharpDX.Direct3D11.CpuAccessFlags.None,
+                            //    Format = texFmt,
+                            //    MipLevels = 1,
+                            //    OptionFlags = SharpDX.Direct3D11.ResourceOptionFlags.None,
+                            //    SampleDescription = new SharpDX.DXGI.SampleDescription(1, 0),
+                            //}, new SharpDX.DataRectangle(buffer1, stride));
+
+
 
                             videoFrames.OnNext(outputTexture);
                         }
                         finally
                         {
-                            device.ImmediateContext.UnmapSubresource(outputTexture, 0);
+                            //device.ImmediateContext.UnmapSubresource(outputTexture, 0);
                         }
 
 

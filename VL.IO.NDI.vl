@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Document xmlns:p="property" Id="Cj0Zq5GjQw4Qay7PkQAX1S" Summary="Receive and send video content over network via the NewTek NDI protocol" Authors="Motzi" Credits="NewTek" LanguageVersion="2020.1.2.135" Version="0.128">
+<Document xmlns:p="property" Id="Cj0Zq5GjQw4Qay7PkQAX1S" Summary="Receive and send video content over network via the NewTek NDI protocol" Authors="Motzi" Credits="NewTek" LanguageVersion="2020.1.1.108" Version="0.128">
   <NugetDependency Id="Jq3wdcDI0TrOhpQpUk16ie" Location="VL.Core" Version="2020.1.2" />
-  <NugetDependency Id="GNWGzTmrnVzNQptZEu7DrG" Location="VL.CoreLib" Version="2020.1.2" />
+  <NugetDependency Id="GNWGzTmrnVzNQptZEu7DrG" Location="VL.CoreLib" Version="2020.1.1" />
   <Patch Id="C6h2Mz3rqxPNUeN6Nz2YoP">
     <Canvas Id="UCJJ4ngvXb5MPzaX1CGF2Y" DefaultCategory="IO.NDI" CanvasType="FullCategory">
       <Pad Id="NCBfcD4lo2XOynmpatt9Sy" Bounds="192,209,116,31" ShowValueBox="true" isIOBox="true" Value="VL.IO.NDI">
@@ -720,6 +720,51 @@
                 <Link Id="QDU2j46yRNINqa00btcJiW" Ids="T46A7WE0YqXLrk2b46l24O,Nd2VWQvKVeVPeY2rbvlEcX" IsHidden="true" />
               </Patch>
             </Node>
+            <!--
+
+    ************************ FromTexture ************************
+
+-->
+            <Node Name="FromTexture" Bounds="647,631,253,155" Id="R1MHqaCW9ZTLFZsDD9sF1y">
+              <p:NodeReference LastCategoryFullName="Primitive" LastSymbolSource="builtin">
+                <Choice Kind="OperationDefinition" Name="Operation" />
+              </p:NodeReference>
+              <Patch Id="OWrVqwz3NnwNl48oL2PXth">
+                <Node Bounds="659,717,105,26" Id="Hcs1actfuA8QEaadicIbR5">
+                  <p:NodeReference LastCategoryFullName="VL.IO.NDI.VideoFrame" LastSymbolSource="VL.IO.NDI.dll">
+                    <Choice Kind="NodeFlag" Name="Node" Fixed="true" />
+                    <CategoryReference Kind="AssemblyCategory" Name="VideoFrame" />
+                    <Choice Kind="OperationCallFlag" Name="Create" />
+                    <PinReference Kind="InputPin" Name="Texture" />
+                  </p:NodeReference>
+                  <Pin Id="Bw8ao7eTPp7MA9RzNmfy9x" Name="Texture" Kind="InputPin" />
+                  <Pin Id="Ai1JwZGxsieLScmqMH6snS" Name="Four CC" Kind="InputPin" />
+                  <Pin Id="FnsHPVYCG6MNrHBMldUsxm" Name="Frame Rate Numerator" Kind="InputPin" />
+                  <Pin Id="Jdc83hybVhLMTumNMUSPnk" Name="Frame Rate Denominator" Kind="InputPin" />
+                  <Pin Id="NJRwxKdGNzYPpDoYKkq5Ge" Name="Format" Kind="InputPin" />
+                  <Pin Id="R9M5xoeNUHKQJxJH4Eii2R" Name="Node Context" Kind="InputPin" />
+                  <Pin Id="RIWxoxsbbruPQLwgGbpVBa" Name="Output" Kind="StateOutputPin" />
+                </Node>
+                <ControlPoint Id="DeDZbW6k3rFQBn5oAzeMBQ" Bounds="661,769" />
+                <Link Id="IQH9yvu0wuCMQATdGZ1CJt" Ids="RIWxoxsbbruPQLwgGbpVBa,DeDZbW6k3rFQBn5oAzeMBQ" />
+                <Link Id="J9PzelJX9dUOYzLLt6QArM" Ids="DeDZbW6k3rFQBn5oAzeMBQ,OrkC66YVAuPMCtsseo1F2v" IsHidden="true" />
+                <Pad Id="I9ZmbaR448XNrLpZpweMx5" Comment="Four CC" Bounds="681,682,148,15" ShowValueBox="true" isIOBox="true" Value="FourCC_type_RGBA">
+                  <p:TypeAnnotation LastCategoryFullName="NewTek.NDIlib" LastSymbolSource="VL.IO.NDI.dll">
+                    <Choice Kind="TypeFlag" Name="FourCC_type_e" />
+                  </p:TypeAnnotation>
+                </Pad>
+                <Link Id="BTieRkRjGi1OoFYvkLstv9" Ids="I9ZmbaR448XNrLpZpweMx5,Ai1JwZGxsieLScmqMH6snS" />
+                <Pin Id="OrkC66YVAuPMCtsseo1F2v" Name="VideoFrame" Kind="OutputPin" Bounds="660,769" />
+                <ControlPoint Id="QjMpDeK8X8gOaZGgaix8GV" Bounds="761,701" />
+                <Link Id="U6xdpmVJb9HQK2XHn9IgjY" Ids="QjMpDeK8X8gOaZGgaix8GV,R9M5xoeNUHKQJxJH4Eii2R" />
+                <Pin Id="VZLCP7yAeR3MHU3NO6dI5W" Name="Node Context" Kind="InputPin" Bounds="765,708" />
+                <Link Id="UFecNuZlB7XPUGLgivF7Nq" Ids="VZLCP7yAeR3MHU3NO6dI5W,QjMpDeK8X8gOaZGgaix8GV" IsHidden="true" />
+                <ControlPoint Id="EE8xzshabYRL5U9XhDcCtF" Bounds="662,649" />
+                <Link Id="U5omwqQDIvZPnNo7DVr2ru" Ids="EE8xzshabYRL5U9XhDcCtF,Bw8ao7eTPp7MA9RzNmfy9x" />
+                <Pin Id="Aou1IJSyqPNMSqPZDqIJ59" Name="Texture" Kind="InputPin" Bounds="662,659" />
+                <Link Id="PSHZ0SbeT5qNinsXBexLfW" Ids="Aou1IJSyqPNMSqPZDqIJ59,EE8xzshabYRL5U9XhDcCtF" IsHidden="true" />
+              </Patch>
+            </Node>
           </Canvas>
           <Patch Id="JWwzTRJ6UIqNPisYNtZ04G" Name="Create" />
           <Patch Id="MECxHPuMxwLOGWPrJJrggj" Name="Update" />
@@ -727,6 +772,7 @@
             <Fragment Id="TXhdTRjdAYKQAWJqcWRLey" Patch="JWwzTRJ6UIqNPisYNtZ04G" Enabled="true" />
             <Fragment Id="SqZWcpsBIfKM1f3EBhuw0o" Patch="MECxHPuMxwLOGWPrJJrggj" Enabled="true" />
             <Fragment Id="BEAzA7jkYLUQDTrHBxEiMk" Patch="EmEawtIirDKLn9rtEGYjK6" />
+            <Fragment Id="OdNXofQnbrFN2CC4yImJx1" Patch="R1MHqaCW9ZTLFZsDD9sF1y" />
           </ProcessDefinition>
         </Patch>
       </Node>
@@ -3856,5 +3902,5 @@
   <PlatformDependency Id="LkvwleFmgyILglvCd3xlo8" Location="System.Collections.Concurrent" />
   <PlatformDependency Id="PbBDxB1VqidPbC5834fuSg" Location="./lib/netstandard2.0/VL.IO.NDI.dll" />
   <NugetDependency Id="ME1qVyIaycMPxPRpbfPJie" Location="VL.Audio" Version="0.1.24-alpha" />
-  <NugetDependency Id="MXkgfRvHR8mLi2Lo4UP3Uz" Location="VL.Skia" Version="2020.1.2" />
+  <NugetDependency Id="MXkgfRvHR8mLi2Lo4UP3Uz" Location="VL.Skia" Version="2020.1.1" />
 </Document>

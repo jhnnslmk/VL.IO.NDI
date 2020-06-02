@@ -287,6 +287,28 @@ namespace VL.IO.NDI
             }
         }
 
+        public static Format ToFormat(this NDIlib.FourCC_type_e format)
+        {
+            switch (format)
+            {
+                case NDIlib.FourCC_type_e.FourCC_type_BGRA:
+                    return Format.B8G8R8A8_UNorm_SRgb;
+                case NDIlib.FourCC_type_e.FourCC_type_BGRX:
+                    return Format.B8G8R8X8_UNorm_SRgb;
+                case NDIlib.FourCC_type_e.FourCC_type_RGBA:
+                    return Format.B8G8R8A8_UNorm_SRgb;
+                case NDIlib.FourCC_type_e.FourCC_type_RGBX:
+                    return Format.B8G8R8X8_UNorm_SRgb;
+                case NDIlib.FourCC_type_e.FourCC_type_UYVA:
+                case NDIlib.FourCC_type_e.FourCC_type_UYVY:
+                case NDIlib.FourCC_type_e.NDIlib_FourCC_type_I420:
+                case NDIlib.FourCC_type_e.NDIlib_FourCC_type_NV12:
+                case NDIlib.FourCC_type_e.NDIlib_FourCC_type_YV12:
+                default:
+                    throw new Exception("Unsupported texture format");
+            }
+        }
+
         public static NDIlib.FourCC_type_e ToFourCC(this Format format)
         {
             switch (format)
