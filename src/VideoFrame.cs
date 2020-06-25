@@ -23,6 +23,9 @@ namespace VL.IO.NDI
         private bool _pinnedBytes = false;
         private System.Buffers.MemoryHandle _handle;
 
+        private bool _pinnedByteArray = false;
+        private GCHandle pinnedArrayHandle;
+
         #region public properties
 
         public int Width
@@ -91,12 +94,6 @@ namespace VL.IO.NDI
         /// the simple constructor only deals with BGRA.For other color formats you'll need to handle it manually.
         /// Defaults to progressive but can be changed.
         /// </summary>
-        /// <param name="width"></param>
-        /// <param name="height"></param>
-        /// <param name="aspectRatio"></param>
-        /// <param name="frameRateNumerator"></param>
-        /// <param name="frameRateDenominator"></param>
-        /// <param name="format"></param>
         public VideoFrame( int width, int height, float aspectRatio, int frameRateNumerator, int frameRateDenominator,
                             NDIlib.frame_format_type_e format = NDIlib.frame_format_type_e.frame_format_type_progressive)
         {
@@ -129,13 +126,6 @@ namespace VL.IO.NDI
         /// <summary>
         /// Create a VideoFrame from a <see cref="SharpDX.Direct3D11.Texture2D"/>
         /// </summary>
-        /// <param name="texture"></param>
-        /// <param name="aspectRatio"></param>
-        /// <param name="fourCC"></param>
-        /// <param name="frameRateNumerator"></param>
-        /// <param name="frameRateDenominator"></param>
-        /// <param name="format"></param>
-        /// <param name="nodeContext"></param>
         public VideoFrame(Texture2D texture, NDIlib.FourCC_type_e fourCC,
             int frameRateNumerator, int frameRateDenominator, NDIlib.frame_format_type_e format, NodeContext nodeContext)
 
@@ -171,15 +161,8 @@ namespace VL.IO.NDI
         }
 
         /// <summary>
-        /// Constructor that Takes an IImage
+        /// Create a VideoFrame from an <see cref="IImage"/>
         /// </summary>
-        /// <param name="image"></param>
-        /// <param name="clone"></param>
-        /// <param name="aspectRatio"></param>
-        /// <param name="fourCC"></param>
-        /// <param name="frameRateNumerator"></param>
-        /// <param name="frameRateDenominator"></param>
-        /// <param name="format"></param>
         public VideoFrame(IImage image, bool clone, float aspectRatio, NDIlib.FourCC_type_e fourCC,
             int frameRateNumerator, int frameRateDenominator, NDIlib.frame_format_type_e format)
         {
@@ -233,6 +216,40 @@ namespace VL.IO.NDI
             };
         }
 
+        /// <summary>
+        /// Create a VideoFrame from a Byte Array
+        /// </summary>
+        public VideoFrame(byte[] byteArray, int width, int height, PixelFormat pixelFormat,
+                             int frameRateNumerator, int frameRateDenominator, NDIlib.frame_format_type_e format)
+        {
+            var aspect = (float)width / height;
+            int stride = width * pixelFormat.SizeInBytes();
+
+            _pinnedByteArray = true; // flag, so we free the GCHandle in Dispose
+
+            pinnedArrayHandle = GCHandle.Alloc(byteArray, GCHandleType.Pinned);
+            IntPtr videoBufferPtr = pinnedArrayHandle.AddrOfPinnedObject();
+
+            _ndiVideoFrame = new NDIlib.video_frame_v2_t()
+            {
+                xres = width,
+                yres = height,
+                FourCC = pixelFormat.ToFourCC(),
+                frame_rate_N = frameRateNumerator,
+                frame_rate_D = frameRateDenominator,
+                picture_aspect_ratio = aspect,
+                frame_format_type = format,
+                timecode = NDIlib.send_timecode_synthesize,
+                p_data = videoBufferPtr,
+                line_stride_in_bytes = stride,
+                p_metadata = IntPtr.Zero,
+                timestamp = 0
+            };
+        }
+
+        /// <summary>
+        /// Create a VideoFrame from an IntPtr
+        /// </summary>
         public VideoFrame(IntPtr bufferPtr, int width, int height, int stride, NDIlib.FourCC_type_e fourCC,
                             float aspectRatio, int frameRateNumerator, int frameRateDenominator, NDIlib.frame_format_type_e format)
         {
@@ -280,6 +297,16 @@ namespace VL.IO.NDI
                 {
                     _handle.Dispose();
                     _pinnedBytes = false;
+                }
+
+                if (_pinnedByteArray)
+                {
+                    //if (pinnedArrayHandle != null)
+                    //{
+                        //if (pinnedArrayHandle.IsAllocated)
+                            pinnedArrayHandle.Free();
+                    //}
+                    _pinnedByteArray = false;
                 }
 
                 NDIlib.destroy();

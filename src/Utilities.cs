@@ -17,6 +17,7 @@ using VL.Lib.Basics.Resources;
 using SharpDX;
 
 using NewTek;
+using System.Runtime.CompilerServices;
 
 // Utility functions outside of the NDILib SDK itself,
 // but useful for working with NDI from managed languages.
@@ -282,6 +283,63 @@ namespace VL.IO.NDI
                     return PixelFormat.R32G32F;
                 case Format.R32G32B32A32_Float:
                     return PixelFormat.R32G32B32A32F;
+                default:
+                    throw new Exception("Unsupported texture format");
+            }
+        }
+
+        public static int SizeInBytes(this PixelFormat format)
+        {
+            switch (format)
+            {
+                case PixelFormat.B8G8R8:
+                    return 24;
+                case PixelFormat.B8G8R8A8:
+                    return 32;
+                case PixelFormat.B8G8R8X8:
+                    return 32;
+                case PixelFormat.R16:
+                    return 16;
+                case PixelFormat.R32F:
+                    return 32;
+                case PixelFormat.R32G32B32A32F:
+                    return 128;
+                case PixelFormat.R32G32F:
+                    return 64;
+                case PixelFormat.R8:
+                    return 8;
+                case PixelFormat.R8G8B8:
+                    return 24;
+                case PixelFormat.R8G8B8A8:
+                    return 32;
+                case PixelFormat.R8G8B8X8:
+                    return 32;
+                case PixelFormat.Unknown:
+                default:
+                    throw new Exception("Unsupported texture format");
+            }
+        }
+
+        public static NDIlib.FourCC_type_e ToFourCC(this PixelFormat format)
+        {
+            switch (format)
+            {
+                case PixelFormat.B8G8R8A8:
+                    return NDIlib.FourCC_type_e.FourCC_type_BGRA;
+                case PixelFormat.B8G8R8X8:
+                    return NDIlib.FourCC_type_e.FourCC_type_BGRX;
+                case PixelFormat.R8G8B8A8:
+                    return NDIlib.FourCC_type_e.FourCC_type_RGBA;
+                case PixelFormat.R8G8B8X8:
+                    return NDIlib.FourCC_type_e.FourCC_type_RGBX;
+                case PixelFormat.B8G8R8:
+                case PixelFormat.R16:
+                case PixelFormat.R32F:
+                case PixelFormat.R32G32B32A32F:
+                case PixelFormat.R32G32F:
+                case PixelFormat.R8:
+                case PixelFormat.R8G8B8:
+                case PixelFormat.Unknown:
                 default:
                     throw new Exception("Unsupported texture format");
             }
